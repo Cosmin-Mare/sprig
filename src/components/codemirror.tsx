@@ -1,81 +1,141 @@
-import { createEditorState, initialExtensions, diagnosticsFromErrorLog } from '../lib/codemirror/init'
-import { useEffect, useRef, useState } from 'preact/hooks'
-import { StateEffect } from '@codemirror/state'
-import styles from './codemirror.module.css'
-import { oneDark } from '@codemirror/theme-one-dark'
-import { EditorView } from '@codemirror/view'
-import { isDark, errorLog } from '../lib/state'
-import { Diagnostic, setDiagnosticsEffect } from '@codemirror/lint'
+import {
+	createEditorState,
+	initialExtensions,
+	diagnosticsFromErrorLog,
+} from "../lib/codemirror/init";
+import { useEffect, useRef, useState } from "preact/hooks";
+import { StateEffect } from "@codemirror/state";
+import styles from "./codemirror.module.css";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { EditorView } from "@codemirror/view";
+import { isDark, errorLog } from "../lib/state";
+import { Diagnostic, setDiagnosticsEffect } from "@codemirror/lint";
+import * as Y from "yjs";
+import { WebrtcProvider } from "y-webrtc";
+import { yCollab } from "y-codemirror.next";
 
 interface CodeMirrorProps {
-	class?: string | undefined
-	initialCode?: string
-	onCodeChange?: () => void
-	onRunShortcut?: () => void
-	onEditorView?: (editor: EditorView) => void
+	id?: string | undefined;
+	class?: string | undefined;
+	initialCode?: string;
+	onCodeChange?: () => void;
+	onRunShortcut?: () => void;
+	onEditorView?: (editor: EditorView) => void;
 }
 
 export default function CodeMirror(props: CodeMirrorProps) {
-	const parent = useRef<HTMLDivElement>(null)
+	const parent = useRef<HTMLDivElement>(null);
 	const [editorRef, setEditorRef] = useState<EditorView>();
+	const [yCollabExtension, setYCollabExtension] = useState<any>();
 
 	// Alert the parent to code changes (not reactive)
-	const onCodeChangeRef = useRef(props.onCodeChange)
-	useEffect(() => { onCodeChangeRef.current = props.onCodeChange }, [props.onCodeChange])
+	const onCodeChangeRef = useRef(props.onCodeChange);
+	useEffect(() => {
+		onCodeChangeRef.current = props.onCodeChange;
+	}, [props.onCodeChange]);
 
 	// Run button
-	const onRunShortcutRef = useRef(props.onRunShortcut)
-	useEffect(() => { onRunShortcutRef.current = props.onRunShortcut }, [props.onRunShortcut])
+	const onRunShortcutRef = useRef(props.onRunShortcut);
+	useEffect(() => {
+		onRunShortcutRef.current = props.onRunShortcut;
+	}, [props.onRunShortcut]);
 
-	let lastCode: string | undefined = props.initialCode ?? ''
+	let lastCode: string | undefined = props.initialCode ?? "";
 	// serves to restore config before dark mode was added
-	const restoreInitialConfig = () => initialExtensions(() => {
-		if (editorRef?.state.doc.toString() === lastCode) return
-		lastCode = editorRef?.state.doc.toString()
-		onCodeChangeRef.current?.()
-	}, () => onRunShortcutRef.current?.());
+	const restoreInitialConfig = () =>
+		initialExtensions(
+			() => {
+				if (editorRef?.state.doc.toString() === lastCode) return;
+				lastCode = editorRef?.state.doc.toString();
+				onCodeChangeRef.current?.();
+			},
+			() => onRunShortcutRef.current?.(),
+			yCollabExtension
+		);
 
 	const setEditorTheme = () => {
 		if (isDark.value) {
 			editorRef?.dispatch({
-				effects: StateEffect.appendConfig.of(oneDark)
+				effects: StateEffect.appendConfig.of(oneDark),
 			});
-		} else editorRef?.dispatch({
-			effects: StateEffect.reconfigure.of(restoreInitialConfig())
-		});
+		} else
+			editorRef?.dispatch({
+				effects: StateEffect.reconfigure.of(restoreInitialConfig()),
+			});
 	};
 
-
 	useEffect(() => {
-		if (!parent.current) throw new Error('Oh golly! The editor parent ref is null')
+		if (!parent.current)
+			throw new Error("Oh golly! The editor parent ref is null");
+		console.log(props.id);
+		if (props.id !== undefined) {
+			const yDoc = new Y.Doc();
+			const provider = new WebrtcProvider(props.id, yDoc, {
+				signaling: [
+					"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
+				],
+			});
+			const ytext = yDoc.getText("codemirror");
+			const yUndoManager = new Y.UndoManager(ytext);
 
-		const editor = new EditorView({
-			state: createEditorState(props.initialCode ? props.initialCode : '', () => {
-				if (editor.state.doc.toString() === lastCode) return
-				lastCode = editor.state.doc.toString()
-				onCodeChangeRef.current?.()
-			}, () => onRunShortcutRef.current?.()),
-			parent: parent.current,
-		})
+			provider.awareness.setLocalStateField("user", {
+				name: "Anonymous" + Math.floor(Math.random() * 1000),
+			});
+			let yCollabExtension = yCollab(ytext, provider.awareness, {
+				undoManager: yUndoManager,
+			});
+			setYCollabExtension(yCollabExtension);
+			const editor = new EditorView({
+				state: createEditorState(
+					ytext.toString(),
+					() => {
+						if (editor.state.doc.toString() === lastCode) return;
+						lastCode = editor.state.doc.toString();
+						onCodeChangeRef.current?.();
+					},
+					() => onRunShortcutRef.current?.(),
+					yCollabExtension
+				),
+				parent: parent.current,
+			});
+			setEditorRef(editor);
+			props.onEditorView?.(editor);
+		} else {
+			const editor = new EditorView({
+				state: createEditorState(
+					props.initialCode ? props.initialCode : "",
+					() => {
+						if (editor.state.doc.toString() === lastCode) return;
+						lastCode = editor.state.doc.toString();
+						onCodeChangeRef.current?.();
+					},
+					() => onRunShortcutRef.current?.()
+				),
+				parent: parent.current,
+			});
 
-		setEditorRef(editor);
-		props.onEditorView?.(editor)
-	}, [])
+			setEditorRef(editor);
+			props.onEditorView?.(editor);
+		}
+	}, []);
 
 	useEffect(() => {
 		setEditorTheme();
 	}, [isDark.value, editorRef]);
 
 	useEffect(() => {
-		errorLog.subscribe(value => {
-			const diagnostics = diagnosticsFromErrorLog(editorRef as EditorView, value);
+		errorLog.subscribe((value) => {
+			const diagnostics = diagnosticsFromErrorLog(
+				editorRef as EditorView,
+				value
+			);
 			editorRef?.dispatch({
-				effects: setDiagnosticsEffect.of(diagnostics as Diagnostic[])
+				effects: setDiagnosticsEffect.of(diagnostics as Diagnostic[]),
 			});
 		});
 	}, [editorRef]);
 
 	return (
-		<div class={`${styles.container} ${props.class ?? ''}`} ref={parent} />
-	)
+		<div class={`${styles.container} ${props.class ?? ""}`} ref={parent} />
+	);
 }
