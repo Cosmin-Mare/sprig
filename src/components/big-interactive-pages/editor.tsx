@@ -371,6 +371,12 @@ export default function Editor({
 		});
 	}, [initialCode]);
 
+	let editorCssClasses = `${styles.pageMain} `;
+	if (isDark.value) {
+		const classes = editorCssClasses.split(" ");
+		classes.push("darkMode");
+		editorCssClasses = classes.join(" ");
+	}
 	return (
 		<div class={styles.page}>
 			<Navbar
@@ -381,12 +387,7 @@ export default function Editor({
 				roomParticipants={roomParticipants}
 			/>
 
-			<div
-				class={styles.pageMain}
-				style={{
-					backgroundColor: isDark.value ? "#2f2f2f" : "#fafed7",
-				}}
-			>
+			<div class={editorCssClasses}>
 				<div className={styles.codeContainer}>
 					<CodeMirror
 						setRoomParticipants={setRoomParticipants}
