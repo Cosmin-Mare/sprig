@@ -6,7 +6,11 @@ import {
 	toggleTheme,
 	errorLog,
 	editSessionLength,
+	themes,
+	theme,
+	switchTheme,
 } from "../lib/state";
+import type { ThemeType } from "../lib/state";
 import Button from "./design-system/button";
 import Textarea from "./design-system/textarea";
 import SavePrompt from "./popups-etc/save-prompt";
@@ -23,7 +27,9 @@ import {
 	IoShareOutline,
 	IoShuffle,
 	IoWarning,
+	IoBrush,
 } from "react-icons/io5";
+import { FaBrush } from "react-icons/fa";
 import { usePopupCloseClick } from "../lib/utils/popup-close-click";
 import { upload, uploadState } from "../lib/upload";
 import { VscLoading } from "react-icons/vsc";
@@ -130,7 +136,7 @@ const prettifyCode = () => {
 export default function EditorNavbar(props: EditorNavbarProps) {
 	const showNavPopup = useSignal(false);
 	const showStuckPopup = useSignal(false);
-	const showRoomPopup = useSignal(false);
+	const showThemePicker = useSignal(false);
 
 	// we will accept the current user's
 	// - name,
@@ -170,6 +176,11 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 		styles.stuckPopup!,
 		() => (showStuckPopup.value = false),
 		showStuckPopup.value
+	);
+	usePopupCloseClick(
+		styles.themePicker!,
+		() => (showThemePicker.value = false),
+		showThemePicker.value
 	);
 
 	let saveState;
@@ -298,6 +309,17 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 					</a>
 				</li>
 
+				<li class={styles.actionIcon}>
+					<a
+						onClick={() =>
+							(showThemePicker.value = !showThemePicker.value)
+						}
+						target="_blank"
+					>
+						<FaBrush />
+					</a>
+				</li>
+
 				<li>
 					<Button
 						class={styles.stuckBtn}
@@ -310,11 +332,13 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 					</Button>
 				</li>
 
-				<li>
-					<Button onClick={toggleTheme}>
-						{isDark.value ? "Light" : "Dark"}
-					</Button>
-				</li>
+				{/*
+			<li>
+				<Button onClick={toggleTheme}>
+					{isDark.value ? "Light" : "Dark"}
+				</Button>
+			</li>
+			*/}
 
 				<li>
 					<Button
@@ -356,6 +380,35 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 					persistenceState={props.persistenceState}
 					onClose={() => (showSharePopup.value = false)}
 				/>
+			)}
+
+			{showThemePicker.value && (
+				<ul class={styles.themePicker}>
+					{Object.keys(themes).map((themeKey) => {
+						const themeValue = themes[themeKey as ThemeType];
+						return (
+							<li
+								onClick={() => {
+									theme.value = themeKey as ThemeType;
+									switchTheme(theme.value);
+								}}
+							>
+								<span
+									style={{
+										display: "inline-block",
+										backgroundColor: themeValue.background,
+										border: "solid 2px",
+										borderColor: themeValue.accent,
+										width: "25px",
+										height: "25px",
+										borderRadius: "50%",
+									}}
+								></span>
+								{themeKey}
+							</li>
+						);
+					})}
+				</ul>
 			)}
 
 			{showStuckPopup.value && (

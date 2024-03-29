@@ -14,7 +14,7 @@ import {
 	useSignal,
 	useSignalEffect,
 } from "@preact/signals";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import { codeMirror, errorLog, muted, PersistenceState } from "../../lib/state";
 import EditorModal from "../popups-etc/editor-modal";
 import { runGame } from "../../lib/engine";
@@ -27,9 +27,13 @@ import { defaultExampleCode } from "../../lib/examples";
 import MigrateToast from "../popups-etc/migrate-toast";
 import { nanoid } from "nanoid";
 import TutorialWarningModal from "../popups-etc/tutorial-warning";
-import { isDark, editSessionLength } from "../../lib/state";
-import { WebrtcProvider } from "y-webrtc";
-import * as Y from "yjs";
+import {
+	isDark,
+	editSessionLength,
+	theme,
+	switchTheme,
+	ThemeType,
+} from "../../lib/state";
 
 interface EditorProps {
 	persistenceState: Signal<PersistenceState>;
@@ -236,7 +240,8 @@ export default function Editor({
 		editSessionLength.value = new Date();
 
 		// load the dark mode value from localstorage
-		isDark.value = Boolean(localStorage.getItem("isDark") ?? "");
+		// isDark.value = Boolean(localStorage.getItem("isDark") ?? "")
+		switchTheme((localStorage.getItem("theme") ?? "light") as ThemeType);
 
 		const updateMaxSize = () => {
 			maxOutputAreaSize.value =
@@ -372,11 +377,13 @@ export default function Editor({
 	}, [initialCode]);
 
 	let editorCssClasses = `${styles.pageMain} `;
+	/*
 	if (isDark.value) {
 		const classes = editorCssClasses.split(" ");
 		classes.push("darkMode");
 		editorCssClasses = classes.join(" ");
 	}
+	*/
 	return (
 		<div class={styles.page}>
 			<Navbar

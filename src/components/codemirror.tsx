@@ -186,7 +186,7 @@ export default function CodeMirror(props: CodeMirrorProps) {
 		);
 
 	const setEditorTheme = () => {
-		if (isDark.value) {
+		if (theme.value === "dark") {
 			editorRef?.dispatch({
 				effects: StateEffect.appendConfig.of(oneDark),
 			});
@@ -220,7 +220,7 @@ export default function CodeMirror(props: CodeMirrorProps) {
 
 	useEffect(() => {
 		setEditorTheme();
-	}, [isDark.value, editorRef]);
+	}, [theme.value, editorRef]);
 
 	useEffect(() => {
 		errorLog.subscribe((value) => {
