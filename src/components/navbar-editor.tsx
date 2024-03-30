@@ -2,8 +2,6 @@ import { Signal, useSignal, useSignalEffect } from "@preact/signals";
 import {
 	codeMirror,
 	PersistenceState,
-	isDark,
-	toggleTheme,
 	errorLog,
 	editSessionLength,
 	themes,
@@ -331,14 +329,6 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 						I'm stuck
 					</Button>
 				</li>
-
-				{/*
-			<li>
-				<Button onClick={toggleTheme}>
-					{isDark.value ? "Light" : "Dark"}
-				</Button>
-			</li>
-			*/}
 
 				<li>
 					<Button

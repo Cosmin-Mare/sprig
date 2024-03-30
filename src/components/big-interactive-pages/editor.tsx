@@ -27,13 +27,7 @@ import { defaultExampleCode } from "../../lib/examples";
 import MigrateToast from "../popups-etc/migrate-toast";
 import { nanoid } from "nanoid";
 import TutorialWarningModal from "../popups-etc/tutorial-warning";
-import {
-	isDark,
-	editSessionLength,
-	theme,
-	switchTheme,
-	ThemeType,
-} from "../../lib/state";
+import { editSessionLength, switchTheme, ThemeType } from "../../lib/state";
 
 interface EditorProps {
 	persistenceState: Signal<PersistenceState>;
@@ -239,8 +233,7 @@ export default function Editor({
 		// re-intialize the value of the editing session length to since the editor was opened
 		editSessionLength.value = new Date();
 
-		// load the dark mode value from localstorage
-		// isDark.value = Boolean(localStorage.getItem("isDark") ?? "")
+		// load the theme value from localstorage
 		switchTheme((localStorage.getItem("theme") ?? "light") as ThemeType);
 
 		const updateMaxSize = () => {
@@ -394,7 +387,7 @@ export default function Editor({
 				roomParticipants={roomParticipants}
 			/>
 
-			<div class={editorCssClasses}>
+			<div class={styles.pageMain}>
 				<div className={styles.codeContainer}>
 					<CodeMirror
 						setRoomParticipants={setRoomParticipants}
