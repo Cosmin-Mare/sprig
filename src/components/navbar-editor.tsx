@@ -252,7 +252,7 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 								class={styles.dino}
 								src={
 									themes[theme.value]?.navbarIcon ??
-									"./SPRIGDINO.png"
+									"/SPRIGDINO.png"
 								}
 								height={38}
 							/>
