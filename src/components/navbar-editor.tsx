@@ -250,7 +250,7 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 							{/* <SprigIcon /> */}
 							<img
 								class={styles.dino}
-								src="/SPRIGDINO.png"
+								src={themes[theme.value].navbarIcon}
 								height={38}
 							/>
 							<div class={styles.caret}>
