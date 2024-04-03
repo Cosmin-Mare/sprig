@@ -28,6 +28,7 @@ import { usePopupCloseClick } from "../lib/utils/popup-close-click";
 import { upload, uploadState } from "../lib/upload";
 import { VscLoading } from "react-icons/vsc";
 import { defaultExampleCode } from "../lib/examples";
+import RoomPopup from "./popups-etc/room-popup";
 
 const saveName = throttle(500, async (gameId: string, newName: string) => {
 	try {
@@ -85,6 +86,7 @@ type StuckData = {
 export default function EditorNavbar(props: EditorNavbarProps) {
 	const showNavPopup = useSignal(false);
 	const showStuckPopup = useSignal(false);
+	const showRoomPopup = useSignal(false);
 
 	// we will accept the current user's
 	// - name,
@@ -455,7 +457,16 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 							</>
 						)}
 						<li>
-							<a href="/start-room">Start a Room</a>
+							<a
+								href="javascript:void"
+								role="button"
+								onClick={() => {
+									showRoomPopup.value = true;
+									showNavPopup.value = false;
+								}}
+							>
+								Start or join a Room
+							</a>
 						</li>
 						<li>
 							<a href="/gallery">Gallery</a>
@@ -560,6 +571,13 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 						)}
 					</ul>
 				</div>
+			)}
+			{showRoomPopup.value && (
+				<RoomPopup
+					onClose={() => {
+						showRoomPopup.value = false;
+					}}
+				></RoomPopup>
 			)}
 		</>
 	);
