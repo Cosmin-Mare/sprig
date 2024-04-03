@@ -24,24 +24,10 @@
 	height: 100%;
 }
 
-.close {
-	align-self: flex-end;
-	background: none;
-	border: none;
-	font-size: 1.8em;
-	height: 1em;
-	width: 1em;
-	color: var(--fg-switch-low);
-	padding: 0;
-	display: block;
-	line-height: 1;
-	cursor: var(--cursor-interactive);
-}
-  
 .close:hover {
 	color: var(--fg-switch-high);
 }
-  
+
 .content {
 	overflow: hidden;
 	flex: 1;

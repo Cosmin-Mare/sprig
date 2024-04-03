@@ -13,9 +13,9 @@ import { Diagnostic, setDiagnosticsEffect } from "@codemirror/lint";
 import * as Y from "yjs";
 import { WebrtcProvider } from "y-webrtc";
 import { yCollab } from "y-codemirror.next";
+import shortUUID from "short-uuid";
 
 interface CodeMirrorProps {
-	id?: string | undefined;
 	class?: string | undefined;
 	initialCode?: string;
 	onCodeChange?: () => void;
@@ -67,10 +67,10 @@ export default function CodeMirror(props: CodeMirrorProps) {
 	useEffect(() => {
 		if (!parent.current)
 			throw new Error("Oh golly! The editor parent ref is null");
-		console.log(props.id);
-		if (props.id !== undefined) {
+		const id = shortUUID.generate();
+		if (id !== undefined) {
 			const yDoc = new Y.Doc();
-			const provider = new WebrtcProvider(props.id, yDoc, {
+			const provider = new WebrtcProvider(id, yDoc, {
 				signaling: [
 					"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
 				],
@@ -100,6 +100,15 @@ export default function CodeMirror(props: CodeMirrorProps) {
 			});
 			setEditorRef(editor);
 			props.onEditorView?.(editor);
+			console.log(
+				fetch("/api/games/new-save", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						id: id,
+					}),
+				})
+			);
 		} else {
 			const editor = new EditorView({
 				state: createEditorState(

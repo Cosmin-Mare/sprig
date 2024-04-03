@@ -139,7 +139,7 @@ const exitTutorial = (persistenceState: Signal<PersistenceState>) => {
 	}
 };
 
-export default function Editor({ persistenceState, cookies, id }: EditorProps) {
+export default function Editor({ persistenceState, cookies }: EditorProps) {
 	// Resize state storage
 	const outputAreaSize = useSignal(
 		Math.max(
@@ -310,7 +310,6 @@ export default function Editor({ persistenceState, cookies, id }: EditorProps) {
 			>
 				<div className={styles.codeContainer}>
 					<CodeMirror
-						id={id}
 						class={styles.code}
 						initialCode={initialCode}
 						onEditorView={(editor) => {
