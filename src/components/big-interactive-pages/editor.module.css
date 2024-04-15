@@ -49,7 +49,6 @@
 	z-index: -1;
 }
 
-
 .codeContainer .errors {
 	font-family: var(--font-code);
 	font-size: 0.9em;
@@ -127,7 +126,8 @@
 	padding: 8px 0;
 }
 
-.screenControls .mute, .screenControls .stop {
+.screenControls .mute,
+.screenControls .stop {
 	cursor: var(--cursor-interactive);
 	user-select: none;
 	color: inherit;
@@ -142,7 +142,8 @@
 	gap: 6px;
 }
 
-.screenControls .mute :global(svg), .screenControls .stop :global(svg) {
+.screenControls .mute :global(svg),
+.screenControls .stop :global(svg) {
 	--size: 24px;
 	display: block;
 	width: var(--size);
@@ -168,4 +169,16 @@
 
 .helpContainer {
 	max-width: 100%;
+}
+
+.participantsPopup {
+	display: flex;
+	flex-direction: column;
+	gap: 15px;
+	background: #f8f9fa;
+	padding: 20px;
+	margin-right: 16px;
+}
+.warningButton {
+	background: rgb(157, 52, 52);
 }

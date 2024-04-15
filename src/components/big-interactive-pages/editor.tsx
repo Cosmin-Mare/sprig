@@ -301,13 +301,21 @@ export default function Editor({ persistenceState, cookies, id }: EditorProps) {
 	return (
 		<div class={styles.page}>
 			<Navbar persistenceState={persistenceState} />
-
 			<div
 				class={styles.pageMain}
 				style={{
 					backgroundColor: isDark.value ? "#2f2f2f" : "#fafed7",
 				}}
 			>
+				<div class={styles.participantsPopup}>
+					<Button class={styles.warningButton}>End room</Button>
+					<Button class={styles.warningButton}>Leave</Button>
+
+					<div>
+						<h2>Participants</h2>
+						<p>There are no participants in this room.</p>
+					</div>
+				</div>
 				<div className={styles.codeContainer}>
 					<CodeMirror
 						id={id}
