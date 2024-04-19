@@ -17,7 +17,20 @@ export default function RoomPopup(props: RoomPopupProps) {
 					id vitae diam. Lorem ipsum dolor sit amet, consectetur
 					adipiscing elit.
 				</p>
-				<Button class={styles.primary}>Start</Button>
+				<Button
+					class={styles.primary}
+					onClick={() => {
+						fetch("/api/room/new", {
+							method: "POST",
+							body: JSON.stringify({}),
+							headers: {
+								"Content-Type": "application/json",
+							},
+						});
+					}}
+				>
+					Start
+				</Button>
 			</div>
 			<div class={styles.modal}>
 				<h2>Join room</h2>
