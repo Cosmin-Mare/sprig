@@ -63,7 +63,6 @@ export const initialExtensions = (
 	onRunShortcut: any,
 	yCollab?: any
 ) => {
-	console.log(yCollab);
 	return [
 		lintGutter(),
 		lineNumbers(),

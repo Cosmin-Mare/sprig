@@ -13,6 +13,7 @@ import { Diagnostic, setDiagnosticsEffect } from "@codemirror/lint";
 import * as Y from "yjs";
 import { WebrtcProvider } from "y-webrtc";
 import { yCollab } from "y-codemirror.next";
+import { symbol } from "astro/zod";
 
 interface CodeMirrorProps {
 	id?: string | undefined;
@@ -63,11 +64,9 @@ export default function CodeMirror(props: CodeMirrorProps) {
 				effects: StateEffect.reconfigure.of(restoreInitialConfig()),
 			});
 	};
-
 	useEffect(() => {
 		if (!parent.current)
 			throw new Error("Oh golly! The editor parent ref is null");
-		console.log(props.id);
 		if (props.id !== undefined) {
 			const yDoc = new Y.Doc();
 			const provider = new WebrtcProvider(props.id, yDoc, {
@@ -75,7 +74,8 @@ export default function CodeMirror(props: CodeMirrorProps) {
 					"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
 				],
 			});
-			const ytext = yDoc.getText("codemirror");
+			//get yjs document from provider
+			let ytext = yDoc.getText("codemirror");
 			const yUndoManager = new Y.UndoManager(ytext);
 
 			provider.awareness.setLocalStateField("user", {
@@ -85,21 +85,61 @@ export default function CodeMirror(props: CodeMirrorProps) {
 				undoManager: yUndoManager,
 			});
 			setYCollabExtension(yCollabExtension);
-			const editor = new EditorView({
-				state: createEditorState(
-					ytext.toString(),
-					() => {
-						if (editor.state.doc.toString() === lastCode) return;
-						lastCode = editor.state.doc.toString();
-						onCodeChangeRef.current?.();
-					},
-					() => onRunShortcutRef.current?.(),
-					yCollabExtension
-				),
-				parent: parent.current,
+			//get the initial code from the yjs document
+
+			// Wait for document state to be received from provider
+			let initialUpdate = true;
+
+			const waitInitialUpdate = function () {
+				return new Promise<void>((resolve) => {
+					let timer: NodeJS.Timeout;
+					const checkUpdated = () => {
+						console.log(provider.awareness.getStates().size);
+						if (initialUpdate === false) {
+							clearTimeout(timer);
+							resolve();
+						} else {
+						}
+					};
+					timer = setTimeout(() => {
+						clearTimeout(timer);
+						resolve();
+					}, 1500);
+
+					checkUpdated();
+				});
+			};
+			waitInitialUpdate().then(() => {
+				if (ytext.toString() === "") {
+					ytext.insert(0, props.initialCode ?? "");
+				}
+				if (!parent.current)
+					throw new Error("Oh golly! The editor parent ref is null");
+
+				const editor = new EditorView({
+					state: createEditorState(
+						ytext.toString(),
+						() => {
+							if (editor.state.doc.toString() === lastCode)
+								return;
+							lastCode = editor.state.doc.toString();
+							onCodeChangeRef.current?.();
+						},
+						() => onRunShortcutRef.current?.(),
+						yCollabExtension
+					),
+					parent: parent.current,
+				});
+				setEditorRef(editor);
+				props.onEditorView?.(editor);
 			});
-			setEditorRef(editor);
-			props.onEditorView?.(editor);
+			yDoc.on("update", () => {
+				// Only trigger on the first update
+				if (!initialUpdate) return;
+				ytext = yDoc.getText("codemirror");
+				console.log(ytext.toString());
+				initialUpdate = false;
+			});
 		} else {
 			const editor = new EditorView({
 				state: createEditorState(
@@ -136,6 +176,15 @@ export default function CodeMirror(props: CodeMirrorProps) {
 	}, [editorRef]);
 
 	return (
-		<div class={`${styles.container} ${props.class ?? ""}`} ref={parent} />
+		<div
+			class={`${styles.container} ${
+				editorRef === undefined
+					? isDark.value
+						? styles.containerSkeletonDark
+						: styles.containerSkeleton
+					: ""
+			} ${props.class ?? ""}`}
+			ref={parent}
+		/>
 	);
 }
