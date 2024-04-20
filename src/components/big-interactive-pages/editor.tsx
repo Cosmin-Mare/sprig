@@ -28,6 +28,7 @@ import MigrateToast from "../popups-etc/migrate-toast";
 import { nanoid } from "nanoid";
 import TutorialWarningModal from "../popups-etc/tutorial-warning";
 import { isDark, editSessionLength } from "../../lib/state";
+import ParticipantsPopup from "../popups-etc/participants-popup";
 
 interface EditorProps {
 	persistenceState: Signal<PersistenceState>;
@@ -307,15 +308,7 @@ export default function Editor({ persistenceState, cookies, id }: EditorProps) {
 					backgroundColor: isDark.value ? "#2f2f2f" : "#fafed7",
 				}}
 			>
-				<div class={styles.participantsPopup}>
-					<Button class={styles.warningButton}>End room</Button>
-					<Button class={styles.warningButton}>Leave</Button>
-
-					<div>
-						<h2>Participants</h2>
-						<p>There are no participants in this room.</p>
-					</div>
-				</div>
+				<ParticipantsPopup onClose={() => {}} />
 				<div className={styles.codeContainer}>
 					<CodeMirror
 						id={id}

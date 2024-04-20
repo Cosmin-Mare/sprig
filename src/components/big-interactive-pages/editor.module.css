@@ -170,15 +170,3 @@
 .helpContainer {
 	max-width: 100%;
 }
-
-.participantsPopup {
-	display: flex;
-	flex-direction: column;
-	gap: 15px;
-	background: #f8f9fa;
-	padding: 20px;
-	margin-right: 16px;
-}
-.warningButton {
-	background: rgb(157, 52, 52);
-}
