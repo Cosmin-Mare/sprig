@@ -159,6 +159,7 @@ export default function Editor({ persistenceState, cookies, id }: EditorProps) {
 
 	// Max height
 	const maxOutputAreaSize = useSignal(outputAreaSize.value);
+
 	useEffect(() => {
 		// re-intialize the value of the editing session length to since the editor was opened
 		editSessionLength.value = new Date();
@@ -200,6 +201,7 @@ export default function Editor({ persistenceState, cookies, id }: EditorProps) {
 	const screen = useRef<HTMLCanvasElement>(null);
 	const cleanup = useRef<(() => void) | null>(null);
 	const screenShake = useSignal(0);
+
 	const onRun = async () => {
 		foldAllTemplateLiterals();
 		if (!screen.current) return;

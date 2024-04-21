@@ -455,7 +455,36 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 							</>
 						)}
 						<li>
-							<a href="/start-room">Start a Room</a>
+							<a
+								href="javascript:void"
+								role="button"
+								onClick={async () => {
+									const response = await fetch(
+										"/api/start-room",
+										{
+											method: "POST",
+											body: JSON.stringify({
+												gameId:
+													props.persistenceState.value
+														.kind === "PERSISTED" &&
+													props.persistenceState.value
+														.game !== "LOADING" &&
+													props.persistenceState.value
+														.game.id,
+											}),
+											headers: {
+												"Content-Type":
+													"application/json",
+											},
+										}
+									);
+									if (response.redirected) {
+										window.location.href = response.url;
+									}
+								}}
+							>
+								Start a Room
+							</a>
 						</li>
 						<li>
 							<a href="/gallery">Gallery</a>

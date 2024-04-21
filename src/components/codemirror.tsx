@@ -67,7 +67,8 @@ export default function CodeMirror(props: CodeMirrorProps) {
 	useEffect(() => {
 		if (!parent.current)
 			throw new Error("Oh golly! The editor parent ref is null");
-		if (props.id !== undefined) {
+		if (props.id !== undefined && props.id !== null) {
+			console.log(props.id);
 			const yDoc = new Y.Doc();
 			const provider = new WebrtcProvider(props.id, yDoc, {
 				signaling: [
@@ -99,6 +100,7 @@ export default function CodeMirror(props: CodeMirrorProps) {
 							clearTimeout(timer);
 							resolve();
 						} else {
+							setTimeout(checkUpdated, 500);
 						}
 					};
 					timer = setTimeout(() => {
@@ -137,7 +139,6 @@ export default function CodeMirror(props: CodeMirrorProps) {
 				// Only trigger on the first update
 				if (!initialUpdate) return;
 				ytext = yDoc.getText("codemirror");
-				console.log(ytext.toString());
 				initialUpdate = false;
 			});
 		} else {

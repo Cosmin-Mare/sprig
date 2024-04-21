@@ -1,83 +1,192 @@
 ---
-import '../../global.css'
-import { firestore, getGame, getSession } from '../../lib/game-saving/account'
-import Editor from '../../components/big-interactive-pages/editor'
-import StandardHead from '../../components/standard-head.astro'
-import { signal } from '@preact/signals'
-import type { PersistenceState } from '../../lib/state'
-import MobileUnsupported from '../../components/popups-etc/mobile-unsupported'
-import { mobileUserAgent } from '../../lib/utils/mobile'
+import "../../global.css";
+import { firestore, getGame, getSession } from "../../lib/game-saving/account";
+import Editor from "../../components/big-interactive-pages/editor";
+import StandardHead from "../../components/standard-head.astro";
+import { signal } from "@preact/signals";
+import type { PersistenceState } from "../../lib/state";
+import MobileUnsupported from "../../components/popups-etc/mobile-unsupported";
+import { mobileUserAgent } from "../../lib/utils/mobile";
+import * as Y from "yjs";
+import { WebrtcProvider } from "y-webrtc";
 
-const session = await getSession(Astro.cookies)
-if (!session) return Astro.redirect(`/login?to=${Astro.request.url}`, 302)
+const session = await getSession(Astro.cookies);
+if (!session) return Astro.redirect(`/login?to=${Astro.request.url}`, 302);
 
-const game = await getGame(Astro.params.id!)
-if (!game || game.ownerId !== session.user.id) return Astro.redirect('/404', 302)
+const game = await getGame(Astro.params.id!);
+if (!game || game.ownerId !== session.user.id) {
+	if (game) {
+		console.log("imposter");
+		let yDoc = new Y.Doc();
+		const provider = new WebrtcProvider(game?.id, yDoc, {
+			signaling: [
+				"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
+			],
+		});
+		const waitRoomOpen = function () {
+			return new Promise<void>((resolve, reject) => {
+				let timer: NodeJS.Timeout;
+				const checkUpdated = () => {
+					console.log(provider.awareness.getStates().size);
+					if (provider.awareness.getStates().size > 1) {
+						roomOpen = true;
+					}
+					if (roomOpen === false) {
+						clearTimeout(timer);
+						resolve();
+					} else {
+						timer = setTimeout(() => {
+							clearTimeout(timer);
+							checkUpdated();
+						}, 1000);
+					}
+				};
+				timer = setTimeout(() => {
+					clearTimeout(timer);
+					reject();
+				}, 3000);
 
-const fileRegexp = /^.*\/(.+)-(\d+)\.md$/
+				checkUpdated();
+			});
+		};
+		provider.on("status", (event) => {
+			if (event.connected) {
+				setTimeout(() => {
+					console.log(provider.awareness.getStates().size);
+				}, 1000);
+			}
+		});
+
+		await waitRoomOpen().catch(() => {
+			provider.destroy();
+			return Astro.redirect(`/404`, 302);
+		});
+		provider.destroy();
+	} else {
+		return Astro.redirect(`/404`, 302);
+	}
+}
+
+const fileRegexp = /^.*\/(.+)-(\d+)\.md$/;
 
 let tutorial: string[] | undefined;
 let tutorialIndex: number | undefined;
+let roomOpen = false;
 if (game.tutorialName) {
-	const files = await Astro.glob('/games/*.md')
-		
-		tutorial = files.filter(file => {
-			const regexedFile = file.file.match(fileRegexp)
-			return regexedFile && regexedFile[1] === game.tutorialName
+	const files = await Astro.glob("/games/*.md");
+
+	tutorial = files
+		.filter((file) => {
+			const regexedFile = file.file.match(fileRegexp);
+			return regexedFile && regexedFile[1] === game.tutorialName;
 		})
-		?.map(md => md.compiledContent())
-	tutorialIndex = game.tutorialIndex
+		?.map((md) => md.compiledContent());
+	tutorialIndex = game.tutorialIndex;
 }
 
-let _persistenceState: PersistenceState
+let _persistenceState: PersistenceState;
 if (session.session.full) {
+	console.log("here");
 	if (game.unprotected) {
-		await firestore.collection('games').doc(game.id).update({ unprotected: false })
-		game.unprotected = false
+		await firestore
+			.collection("games")
+			.doc(game.id)
+			.update({ unprotected: false });
+		game.unprotected = false;
 	}
-	if (Astro.cookies.get('sprigTempGame').value === game.id)
-		Astro.cookies.delete('sprigTempGame', { path: '/' })
+	if (Astro.cookies.get("sprigTempGame").value === game.id)
+		Astro.cookies.delete("sprigTempGame", { path: "/" });
 
 	_persistenceState = {
-		kind: 'PERSISTED',
+		kind: "PERSISTED",
 		session,
-		cloudSaveState: 'SAVED',
+		cloudSaveState: "SAVED",
 		game,
 		tutorial,
 		tutorialIndex,
-		stale: false
-	}
-
+		stale: false,
+	};
 } else {
-	if (!game.unprotected) return Astro.redirect(`/login?to=${Astro.request.url}`, 302)
-	if (game.ownerId !== session.user.id) return Astro.redirect('/404', 302)
+	console.log("here2");
+	if (!game.unprotected)
+		return Astro.redirect(`/login?to=${Astro.request.url}`, 302);
+	if (game.ownerId !== session.user.id) {
+		console.log("imposter");
+		let yDoc = new Y.Doc();
+		const provider = new WebrtcProvider(game.id, yDoc, {
+			signaling: [
+				"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
+			],
+		});
+		const waitRoomOpen = function () {
+			return new Promise<void>((resolve, reject) => {
+				let timer: NodeJS.Timeout;
+				const checkUpdated = () => {
+					console.log(provider.awareness.getStates().size);
+					if (provider.awareness.getStates().size > 1) {
+						roomOpen = true;
+					}
+					if (roomOpen === false) {
+						clearTimeout(timer);
+						resolve();
+					} else {
+						timer = setTimeout(() => {
+							clearTimeout(timer);
+							checkUpdated();
+						}, 1000);
+					}
+				};
+				timer = setTimeout(() => {
+					clearTimeout(timer);
+					reject();
+				}, 3000);
+
+				checkUpdated();
+			});
+		};
+		provider.on("status", (event) => {
+			if (event.connected) {
+				setTimeout(() => {
+					console.log(provider.awareness.getStates().size);
+				}, 1000);
+			}
+		});
+
+		await waitRoomOpen().catch(() => {
+			provider.destroy();
+			return Astro.redirect(`/404`, 302);
+		});
+		provider.destroy();
+	}
 
 	_persistenceState = {
-		kind: 'PERSISTED',
+		kind: "PERSISTED",
+
 		session,
-		cloudSaveState: 'SAVED',
+		cloudSaveState: "SAVED",
 		game,
 		tutorial,
 		tutorialIndex,
-		stale: false
-	}
+		stale: false,
+	};
 }
 
-const persistenceState = signal<PersistenceState>(_persistenceState)
-const isMobile = mobileUserAgent(Astro.request.headers.get('user-agent') ?? '')
+const persistenceState = signal<PersistenceState>(_persistenceState);
+const isMobile = mobileUserAgent(Astro.request.headers.get("user-agent") ?? "");
 ---
 
-<html lang='en'>
+<html lang="en">
 	<head>
-		<StandardHead title='Editor' />
+		<StandardHead title="Editor" />
 	</head>
 	<body>
 		<Editor
 			client:load
 			persistenceState={persistenceState}
+			id={roomOpen ? game.id : undefined}
 			cookies={{
-				outputAreaSize: Astro.cookies.get('outputAreaSize').number(),
-				hideHelp: Astro.cookies.get('hideHelp').boolean()
+				outputAreaSize: Astro.cookies.get("outputAreaSize").number(),
+				hideHelp: Astro.cookies.get("hideHelp").boolean(),
 			}}
 		/>
 		{isMobile ? <MobileUnsupported /> : null}
