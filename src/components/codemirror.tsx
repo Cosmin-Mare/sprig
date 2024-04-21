@@ -8,15 +8,20 @@ import { StateEffect } from "@codemirror/state";
 import styles from "./codemirror.module.css";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorView } from "@codemirror/view";
-import { isDark, errorLog } from "../lib/state";
+import { isDark, errorLog, PersistenceState } from "../lib/state";
 import { Diagnostic, setDiagnosticsEffect } from "@codemirror/lint";
 import * as Y from "yjs";
 import { WebrtcProvider } from "y-webrtc";
 import { yCollab } from "y-codemirror.next";
 import { symbol } from "astro/zod";
+import { Signal } from "@preact/signals";
+import { getGame } from "../lib/game-saving/account";
+import shortUUID from "short-uuid";
 
 interface CodeMirrorProps {
-	id?: string | undefined;
+	isInRoom: boolean;
+	setIsInRoom: (value: boolean) => void;
+	persistenceState: Signal<PersistenceState>;
 	class?: string | undefined;
 	initialCode?: string;
 	onCodeChange?: () => void;
@@ -28,6 +33,7 @@ export default function CodeMirror(props: CodeMirrorProps) {
 	const parent = useRef<HTMLDivElement>(null);
 	const [editorRef, setEditorRef] = useState<EditorView>();
 	const [yCollabExtension, setYCollabExtension] = useState<any>();
+	const [id, setId] = useState<string | null>(null);
 
 	// Alert the parent to code changes (not reactive)
 	const onCodeChangeRef = useRef(props.onCodeChange);
@@ -40,6 +46,108 @@ export default function CodeMirror(props: CodeMirrorProps) {
 	useEffect(() => {
 		onRunShortcutRef.current = props.onRunShortcut;
 	}, [props.onRunShortcut]);
+
+	useEffect(() => {
+		if (props.isInRoom) {
+			if (props.persistenceState.value.session == null) {
+				setId(shortUUID().generate());
+			} else if (props.persistenceState.value.session.session.full) {
+				let ownerId =
+					props.persistenceState.value.kind === "PERSISTED" &&
+					props.persistenceState.value.game !== "LOADING" &&
+					props.persistenceState.value.game.ownerId;
+				let gameId =
+					props.persistenceState.value.kind === "PERSISTED" &&
+					props.persistenceState.value.game !== "LOADING" &&
+					props.persistenceState.value.game.id;
+
+				if (!ownerId || !gameId) return; //TODO: make a popup
+				if (props.persistenceState.value.session.user.id == ownerId) {
+					setId(gameId);
+					setEditorRef(undefined);
+				} else {
+					//TODO: make a popup
+				}
+			}
+		}
+	}, [props.isInRoom]);
+
+	useEffect(() => {
+		console.log(id);
+		if (id === null) return;
+		console.log("here");
+
+		const yDoc = new Y.Doc();
+		const provider = new WebrtcProvider(id, yDoc, {
+			signaling: [
+				"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
+			],
+		});
+		//get yjs document from provider
+		let ytext = yDoc.getText("codemirror");
+		const yUndoManager = new Y.UndoManager(ytext);
+
+		provider.awareness.setLocalStateField("user", {
+			name: "Anonymous" + Math.floor(Math.random() * 1000),
+		});
+		let yCollabExtension = yCollab(ytext, provider.awareness, {
+			undoManager: yUndoManager,
+		});
+		setYCollabExtension(yCollabExtension);
+		//get the initial code from the yjs document
+		// Wait for document state to be received from provider
+		let initialUpdate = true;
+
+		const waitInitialUpdate = function () {
+			return new Promise<void>((resolve) => {
+				let timer: NodeJS.Timeout;
+				const checkUpdated = () => {
+					console.log(provider.awareness.getStates().size);
+					if (initialUpdate === false) {
+						clearTimeout(timer);
+						resolve();
+					} else {
+						setTimeout(checkUpdated, 500);
+					}
+				};
+				timer = setTimeout(() => {
+					clearTimeout(timer);
+					resolve();
+				}, 1500);
+
+				checkUpdated();
+			});
+		};
+		waitInitialUpdate().then(() => {
+			if (ytext.toString() === "") {
+				ytext.insert(0, lastCode ?? "");
+			}
+			if (!parent.current)
+				throw new Error("Oh golly! The editor parent ref is null");
+
+			const editor = new EditorView({
+				state: createEditorState(
+					ytext.toString(),
+					() => {
+						if (editor.state.doc.toString() === lastCode) return;
+						lastCode = editor.state.doc.toString();
+						onCodeChangeRef.current?.();
+					},
+					() => onRunShortcutRef.current?.(),
+					yCollabExtension
+				),
+				parent: parent.current,
+			});
+			setEditorRef(editor);
+			props.onEditorView?.(editor);
+		});
+		yDoc.on("update", () => {
+			// Only trigger on the first update
+			if (!initialUpdate) return;
+			ytext = yDoc.getText("codemirror");
+			initialUpdate = false;
+		});
+	}, [id]);
 
 	let lastCode: string | undefined = props.initialCode ?? "";
 	// serves to restore config before dark mode was added
@@ -67,80 +175,7 @@ export default function CodeMirror(props: CodeMirrorProps) {
 	useEffect(() => {
 		if (!parent.current)
 			throw new Error("Oh golly! The editor parent ref is null");
-		if (props.id !== undefined && props.id !== null) {
-			console.log(props.id);
-			const yDoc = new Y.Doc();
-			const provider = new WebrtcProvider(props.id, yDoc, {
-				signaling: [
-					"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
-				],
-			});
-			//get yjs document from provider
-			let ytext = yDoc.getText("codemirror");
-			const yUndoManager = new Y.UndoManager(ytext);
-
-			provider.awareness.setLocalStateField("user", {
-				name: "Anonymous" + Math.floor(Math.random() * 1000),
-			});
-			let yCollabExtension = yCollab(ytext, provider.awareness, {
-				undoManager: yUndoManager,
-			});
-			setYCollabExtension(yCollabExtension);
-			//get the initial code from the yjs document
-
-			// Wait for document state to be received from provider
-			let initialUpdate = true;
-
-			const waitInitialUpdate = function () {
-				return new Promise<void>((resolve) => {
-					let timer: NodeJS.Timeout;
-					const checkUpdated = () => {
-						console.log(provider.awareness.getStates().size);
-						if (initialUpdate === false) {
-							clearTimeout(timer);
-							resolve();
-						} else {
-							setTimeout(checkUpdated, 500);
-						}
-					};
-					timer = setTimeout(() => {
-						clearTimeout(timer);
-						resolve();
-					}, 1500);
-
-					checkUpdated();
-				});
-			};
-			waitInitialUpdate().then(() => {
-				if (ytext.toString() === "") {
-					ytext.insert(0, props.initialCode ?? "");
-				}
-				if (!parent.current)
-					throw new Error("Oh golly! The editor parent ref is null");
-
-				const editor = new EditorView({
-					state: createEditorState(
-						ytext.toString(),
-						() => {
-							if (editor.state.doc.toString() === lastCode)
-								return;
-							lastCode = editor.state.doc.toString();
-							onCodeChangeRef.current?.();
-						},
-						() => onRunShortcutRef.current?.(),
-						yCollabExtension
-					),
-					parent: parent.current,
-				});
-				setEditorRef(editor);
-				props.onEditorView?.(editor);
-			});
-			yDoc.on("update", () => {
-				// Only trigger on the first update
-				if (!initialUpdate) return;
-				ytext = yDoc.getText("codemirror");
-				initialUpdate = false;
-			});
+		if (id !== undefined && id !== null) {
 		} else {
 			const editor = new EditorView({
 				state: createEditorState(

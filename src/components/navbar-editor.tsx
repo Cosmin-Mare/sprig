@@ -73,6 +73,7 @@ const canDelete = (persistenceState: Signal<PersistenceState>) => {
 
 interface EditorNavbarProps {
 	persistenceState: Signal<PersistenceState>;
+	setIsInRoom: (isRoom: boolean) => void;
 }
 
 type StuckCategory = "Logic Error" | "Syntax Error" | "Other";
@@ -458,30 +459,7 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 							<a
 								href="javascript:void"
 								role="button"
-								onClick={async () => {
-									const response = await fetch(
-										"/api/start-room",
-										{
-											method: "POST",
-											body: JSON.stringify({
-												gameId:
-													props.persistenceState.value
-														.kind === "PERSISTED" &&
-													props.persistenceState.value
-														.game !== "LOADING" &&
-													props.persistenceState.value
-														.game.id,
-											}),
-											headers: {
-												"Content-Type":
-													"application/json",
-											},
-										}
-									);
-									if (response.redirected) {
-										window.location.href = response.url;
-									}
-								}}
+								onClick={() => props.setIsInRoom(true)}
 							>
 								Start a Room
 							</a>

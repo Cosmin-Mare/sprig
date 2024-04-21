@@ -14,7 +14,7 @@ import {
 	useSignal,
 	useSignalEffect,
 } from "@preact/signals";
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { codeMirror, errorLog, muted, PersistenceState } from "../../lib/state";
 import EditorModal from "../popups-etc/editor-modal";
 import { runGame } from "../../lib/engine";
@@ -201,7 +201,7 @@ export default function Editor({ persistenceState, cookies, id }: EditorProps) {
 	const screen = useRef<HTMLCanvasElement>(null);
 	const cleanup = useRef<(() => void) | null>(null);
 	const screenShake = useSignal(0);
-
+	let [isInRoom, setIsInRoom] = useState(false);
 	const onRun = async () => {
 		foldAllTemplateLiterals();
 		if (!screen.current) return;
@@ -302,7 +302,10 @@ export default function Editor({ persistenceState, cookies, id }: EditorProps) {
 
 	return (
 		<div class={styles.page}>
-			<Navbar persistenceState={persistenceState} />
+			<Navbar
+				persistenceState={persistenceState}
+				setIsInRoom={setIsInRoom}
+			/>
 
 			<div
 				class={styles.pageMain}
@@ -312,7 +315,9 @@ export default function Editor({ persistenceState, cookies, id }: EditorProps) {
 			>
 				<div className={styles.codeContainer}>
 					<CodeMirror
-						id={id}
+						persistenceState={persistenceState}
+						isInRoom={isInRoom}
+						setIsInRoom={setIsInRoom}
 						class={styles.code}
 						initialCode={initialCode}
 						onEditorView={(editor) => {

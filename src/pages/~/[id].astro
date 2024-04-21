@@ -16,9 +16,8 @@ if (!session) return Astro.redirect(`/login?to=${Astro.request.url}`, 302);
 const game = await getGame(Astro.params.id!);
 if (!game || game.ownerId !== session.user.id) {
 	if (game) {
-		console.log("imposter");
 		let yDoc = new Y.Doc();
-		const provider = new WebrtcProvider(game?.id, yDoc, {
+		const provider = new WebrtcProvider(game.id, yDoc, {
 			signaling: [
 				"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
 			],
@@ -86,7 +85,6 @@ if (game.tutorialName) {
 
 let _persistenceState: PersistenceState;
 if (session.session.full) {
-	console.log("here");
 	if (game.unprotected) {
 		await firestore
 			.collection("games")
@@ -107,7 +105,6 @@ if (session.session.full) {
 		stale: false,
 	};
 } else {
-	console.log("here2");
 	if (!game.unprotected)
 		return Astro.redirect(`/login?to=${Astro.request.url}`, 302);
 	if (game.ownerId !== session.user.id) {
