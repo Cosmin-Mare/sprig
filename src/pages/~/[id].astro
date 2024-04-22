@@ -15,55 +15,11 @@ if (!session) return Astro.redirect(`/login?to=${Astro.request.url}`, 302);
 
 const game = await getGame(Astro.params.id!);
 if (!game || game.ownerId !== session.user.id) {
-	if (game) {
-		let yDoc = new Y.Doc();
-		const provider = new WebrtcProvider(game.id, yDoc, {
-			signaling: [
-				"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
-			],
-		});
-		const waitRoomOpen = function () {
-			return new Promise<void>((resolve, reject) => {
-				let timer: NodeJS.Timeout;
-				const checkUpdated = () => {
-					console.log(provider.awareness.getStates().size);
-					if (provider.awareness.getStates().size > 1) {
-						roomOpen = true;
-					}
-					if (roomOpen === false) {
-						clearTimeout(timer);
-						resolve();
-					} else {
-						timer = setTimeout(() => {
-							clearTimeout(timer);
-							checkUpdated();
-						}, 1000);
-					}
-				};
-				timer = setTimeout(() => {
-					clearTimeout(timer);
-					reject();
-				}, 3000);
+	return Astro.redirect(`/404`, 302);
+}
 
-				checkUpdated();
-			});
-		};
-		provider.on("status", (event) => {
-			if (event.connected) {
-				setTimeout(() => {
-					console.log(provider.awareness.getStates().size);
-				}, 1000);
-			}
-		});
-
-		await waitRoomOpen().catch(() => {
-			provider.destroy();
-			return Astro.redirect(`/404`, 302);
-		});
-		provider.destroy();
-	} else {
-		return Astro.redirect(`/404`, 302);
-	}
+if (globalThis.window) {
+	console.log("ajaj");
 }
 
 const fileRegexp = /^.*\/(.+)-(\d+)\.md$/;
@@ -108,52 +64,53 @@ if (session.session.full) {
 	if (!game.unprotected)
 		return Astro.redirect(`/login?to=${Astro.request.url}`, 302);
 	if (game.ownerId !== session.user.id) {
-		console.log("imposter");
-		let yDoc = new Y.Doc();
-		const provider = new WebrtcProvider(game.id, yDoc, {
-			signaling: [
-				"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
-			],
-		});
-		const waitRoomOpen = function () {
-			return new Promise<void>((resolve, reject) => {
-				let timer: NodeJS.Timeout;
-				const checkUpdated = () => {
-					console.log(provider.awareness.getStates().size);
-					if (provider.awareness.getStates().size > 1) {
-						roomOpen = true;
-					}
-					if (roomOpen === false) {
-						clearTimeout(timer);
-						resolve();
-					} else {
-						timer = setTimeout(() => {
-							clearTimeout(timer);
-							checkUpdated();
-						}, 1000);
-					}
-				};
-				timer = setTimeout(() => {
-					clearTimeout(timer);
-					reject();
-				}, 3000);
+		// console.log("imposter");
+		// let yDoc = new Y.Doc();
+		// const provider = new WebrtcProvider(game.id, yDoc, {
+		// 	signaling: [
+		// 		"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
+		// 	],
+		// });
+		// const waitRoomOpen = function () {
+		// 	return new Promise<void>((resolve, reject) => {
+		// 		let timer: NodeJS.Timeout;
+		// 		const checkUpdated = () => {
+		// 			console.log(provider.awareness.getStates().size);
+		// 			if (provider.awareness.getStates().size > 1) {
+		// 				roomOpen = true;
+		// 			}
+		// 			if (roomOpen === false) {
+		// 				clearTimeout(timer);
+		// 				resolve();
+		// 			} else {
+		// 				timer = setTimeout(() => {
+		// 					clearTimeout(timer);
+		// 					checkUpdated();
+		// 				}, 1000);
+		// 			}
+		// 		};
+		// 		timer = setTimeout(() => {
+		// 			clearTimeout(timer);
+		// 			reject();
+		// 		}, 3000);
 
-				checkUpdated();
-			});
-		};
-		provider.on("status", (event) => {
-			if (event.connected) {
-				setTimeout(() => {
-					console.log(provider.awareness.getStates().size);
-				}, 1000);
-			}
-		});
+		// 		checkUpdated();
+		// 	});
+		// };
+		// provider.on("status", (event) => {
+		// 	if (event.connected) {
+		// 		setTimeout(() => {
+		// 			console.log(provider.awareness.getStates().size);
+		// 		}, 1000);
+		// 	}
+		// });
 
-		await waitRoomOpen().catch(() => {
-			provider.destroy();
-			return Astro.redirect(`/404`, 302);
-		});
-		provider.destroy();
+		// await waitRoomOpen().catch(() => {
+		// 	provider.destroy();
+		// 	return Astro.redirect(`/404`, 302);
+		// });
+		// provider.destroy();
+		return Astro.redirect(`/404`, 302);
 	}
 
 	_persistenceState = {
