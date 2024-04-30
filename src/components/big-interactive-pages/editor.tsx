@@ -28,6 +28,9 @@ import MigrateToast from "../popups-etc/migrate-toast";
 import { nanoid } from "nanoid";
 import TutorialWarningModal from "../popups-etc/tutorial-warning";
 import { isDark, editSessionLength } from "../../lib/state";
+import { WebrtcProvider } from "y-webrtc";
+import * as Y from "yjs";
+import { set } from "astro/zod";
 
 interface EditorProps {
 	persistenceState: Signal<PersistenceState>;
@@ -36,6 +39,7 @@ interface EditorProps {
 		helpAreaSize: number | null;
 		hideHelp: boolean;
 	};
+	checkRoom: boolean;
 	id?: string;
 }
 
@@ -139,7 +143,73 @@ const exitTutorial = (persistenceState: Signal<PersistenceState>) => {
 	}
 };
 
-export default function Editor({ persistenceState, cookies, id }: EditorProps) {
+export default function Editor({
+	persistenceState,
+	cookies,
+	id,
+	checkRoom,
+}: EditorProps) {
+	const [roomId, setRoomId] = useState<string | null>(null);
+	useEffect(() => {
+		if (id) setRoomId(id);
+		if (checkRoom) {
+			const yDoc = new Y.Doc();
+			if (
+				persistenceState.value.kind !== "PERSISTED" ||
+				persistenceState.value.game === "LOADING"
+			) {
+				return;
+			}
+			const provider = new WebrtcProvider(
+				persistenceState.value.game.id,
+				yDoc,
+				{
+					signaling: [
+						"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
+					],
+				}
+			);
+			const waitProviderConnection = function () {
+				return new Promise<void>((resolve, reject) => {
+					let timer: NodeJS.Timeout;
+					const checkUpdated = () => {
+						let providerStates =
+							provider.awareness.getStates().size;
+						if (providerStates > 1) {
+							clearTimeout(timer);
+							resolve();
+						} else {
+							setTimeout(checkUpdated, 500);
+						}
+					};
+					timer = setTimeout(() => {
+						clearTimeout(timer);
+						reject();
+					}, 2500);
+
+					checkUpdated();
+				});
+			};
+			waitProviderConnection().then(
+				() => {
+					if (
+						persistenceState.value.kind === "PERSISTED" &&
+						persistenceState.value.game !== "LOADING"
+					) {
+						setRoomId(persistenceState.value.game.id);
+						provider.destroy();
+						yDoc.destroy();
+					} else {
+						window.location.href = "/404";
+					}
+				},
+				() => {
+					window.location.href = "/404";
+				}
+			);
+		}
+	}, [checkRoom]);
+
 	// Resize state storage
 	const outputAreaSize = useSignal(
 		Math.max(
@@ -315,9 +385,10 @@ export default function Editor({ persistenceState, cookies, id }: EditorProps) {
 			>
 				<div className={styles.codeContainer}>
 					<CodeMirror
+						roomId={roomId}
+						setRoomId={setRoomId}
 						persistenceState={persistenceState}
 						isInRoom={isInRoom}
-						setIsInRoom={setIsInRoom}
 						class={styles.code}
 						initialCode={initialCode}
 						onEditorView={(editor) => {

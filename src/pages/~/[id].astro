@@ -7,26 +7,20 @@ import { signal } from "@preact/signals";
 import type { PersistenceState } from "../../lib/state";
 import MobileUnsupported from "../../components/popups-etc/mobile-unsupported";
 import { mobileUserAgent } from "../../lib/utils/mobile";
-import * as Y from "yjs";
-import { WebrtcProvider } from "y-webrtc";
 
 const session = await getSession(Astro.cookies);
 if (!session) return Astro.redirect(`/login?to=${Astro.request.url}`, 302);
+let checkRoom = false;
 
 const game = await getGame(Astro.params.id!);
-if (!game || game.ownerId !== session.user.id) {
+if (!game) {
 	return Astro.redirect(`/404`, 302);
-}
-
-if (globalThis.window) {
-	console.log("ajaj");
 }
 
 const fileRegexp = /^.*\/(.+)-(\d+)\.md$/;
 
 let tutorial: string[] | undefined;
 let tutorialIndex: number | undefined;
-let roomOpen = false;
 if (game.tutorialName) {
 	const files = await Astro.glob("/games/*.md");
 
@@ -51,6 +45,10 @@ if (session.session.full) {
 	if (Astro.cookies.get("sprigTempGame").value === game.id)
 		Astro.cookies.delete("sprigTempGame", { path: "/" });
 
+	if (game.ownerId !== session.user.id) {
+		checkRoom = true;
+	}
+
 	_persistenceState = {
 		kind: "PERSISTED",
 		session,
@@ -64,53 +62,7 @@ if (session.session.full) {
 	if (!game.unprotected)
 		return Astro.redirect(`/login?to=${Astro.request.url}`, 302);
 	if (game.ownerId !== session.user.id) {
-		// console.log("imposter");
-		// let yDoc = new Y.Doc();
-		// const provider = new WebrtcProvider(game.id, yDoc, {
-		// 	signaling: [
-		// 		"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
-		// 	],
-		// });
-		// const waitRoomOpen = function () {
-		// 	return new Promise<void>((resolve, reject) => {
-		// 		let timer: NodeJS.Timeout;
-		// 		const checkUpdated = () => {
-		// 			console.log(provider.awareness.getStates().size);
-		// 			if (provider.awareness.getStates().size > 1) {
-		// 				roomOpen = true;
-		// 			}
-		// 			if (roomOpen === false) {
-		// 				clearTimeout(timer);
-		// 				resolve();
-		// 			} else {
-		// 				timer = setTimeout(() => {
-		// 					clearTimeout(timer);
-		// 					checkUpdated();
-		// 				}, 1000);
-		// 			}
-		// 		};
-		// 		timer = setTimeout(() => {
-		// 			clearTimeout(timer);
-		// 			reject();
-		// 		}, 3000);
-
-		// 		checkUpdated();
-		// 	});
-		// };
-		// provider.on("status", (event) => {
-		// 	if (event.connected) {
-		// 		setTimeout(() => {
-		// 			console.log(provider.awareness.getStates().size);
-		// 		}, 1000);
-		// 	}
-		// });
-
-		// await waitRoomOpen().catch(() => {
-		// 	provider.destroy();
-		// 	return Astro.redirect(`/404`, 302);
-		// });
-		// provider.destroy();
-		return Astro.redirect(`/404`, 302);
+		checkRoom = true;
 	}
 
 	_persistenceState = {
@@ -133,11 +85,12 @@ const isMobile = mobileUserAgent(Astro.request.headers.get("user-agent") ?? "");
 	<head>
 		<StandardHead title="Editor" />
 	</head>
+
 	<body>
 		<Editor
 			client:load
 			persistenceState={persistenceState}
-			id={roomOpen ? game.id : undefined}
+			checkRoom={checkRoom}
 			cookies={{
 				outputAreaSize: Astro.cookies.get("outputAreaSize").number(),
 				hideHelp: Astro.cookies.get("hideHelp").boolean(),
