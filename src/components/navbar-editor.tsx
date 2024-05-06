@@ -28,6 +28,7 @@ import { usePopupCloseClick } from "../lib/utils/popup-close-click";
 import { upload, uploadState } from "../lib/upload";
 import { VscLoading } from "react-icons/vsc";
 import { defaultExampleCode } from "../lib/examples";
+import RoomPopup from "./popups-etc/room-popup";
 
 const saveName = throttle(500, async (gameId: string, newName: string) => {
 	try {
@@ -74,6 +75,9 @@ const canDelete = (persistenceState: Signal<PersistenceState>) => {
 interface EditorNavbarProps {
 	persistenceState: Signal<PersistenceState>;
 	setIsInRoom: (isRoom: boolean) => void;
+	roomId: string | null;
+	isConnectedToRoom: boolean;
+	roomParticipants: string[];
 }
 
 type StuckCategory = "Logic Error" | "Syntax Error" | "Other";
@@ -86,6 +90,7 @@ type StuckData = {
 export default function EditorNavbar(props: EditorNavbarProps) {
 	const showNavPopup = useSignal(false);
 	const showStuckPopup = useSignal(false);
+	const showRoomPopup = useSignal(false);
 
 	// we will accept the current user's
 	// - name,
@@ -456,13 +461,28 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 							</>
 						)}
 						<li>
-							<a
-								href="javascript:void"
-								role="button"
-								onClick={() => props.setIsInRoom(true)}
-							>
-								Start a Room
-							</a>
+							{props.roomId === null ? (
+								<a
+									href="javascript:void"
+									role="button"
+									onClick={() => {
+										showRoomPopup.value = true;
+										props.setIsInRoom(true);
+									}}
+								>
+									Start a Room
+								</a>
+							) : (
+								<a
+									href="javascript:void"
+									role="button"
+									onClick={() => {
+										showRoomPopup.value = true;
+									}}
+								>
+									Room Details
+								</a>
+							)}
 						</li>
 						<li>
 							<a href="/gallery">Gallery</a>
@@ -567,6 +587,13 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 						)}
 					</ul>
 				</div>
+			)}
+			{showRoomPopup.value && (
+				<RoomPopup
+					roomId={props.roomId}
+					isConnected={props.isConnectedToRoom}
+					participants={props.roomParticipants}
+				/>
 			)}
 		</>
 	);

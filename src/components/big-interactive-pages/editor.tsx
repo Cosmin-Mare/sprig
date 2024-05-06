@@ -149,6 +149,8 @@ export default function Editor({
 	checkRoom,
 }: EditorProps) {
 	const [roomId, setRoomId] = useState<string | null>(null);
+	const [isConnectedToRoom, setIsConnectedToRoom] = useState(false);
+	const [roomParticipants, setRoomParticipants] = useState<string[]>([]);
 	useEffect(() => {
 		if (id) setRoomId(id);
 		if (checkRoom) {
@@ -374,6 +376,9 @@ export default function Editor({
 			<Navbar
 				persistenceState={persistenceState}
 				setIsInRoom={setIsInRoom}
+				roomId={roomId}
+				isConnectedToRoom={isConnectedToRoom}
+				roomParticipants={roomParticipants}
 			/>
 
 			<div
@@ -384,6 +389,8 @@ export default function Editor({
 			>
 				<div className={styles.codeContainer}>
 					<CodeMirror
+						setRoomParticipants={setRoomParticipants}
+						setIsConnectedToRoom={setIsConnectedToRoom}
 						roomId={roomId}
 						setRoomId={setRoomId}
 						persistenceState={persistenceState}

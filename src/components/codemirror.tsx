@@ -22,12 +22,14 @@ interface CodeMirrorProps {
 	roomId: string | null;
 	setRoomId: (roomId: string) => void;
 	isInRoom: boolean;
+	setIsConnectedToRoom: (isConnected: boolean) => void;
 	persistenceState: Signal<PersistenceState>;
 	class?: string | undefined;
 	initialCode?: string;
 	onCodeChange?: () => void;
 	onRunShortcut?: () => void;
 	onEditorView?: (editor: EditorView) => void;
+	setRoomParticipants: (participants: string[]) => void;
 }
 
 export default function CodeMirror(props: CodeMirrorProps) {
@@ -157,6 +159,13 @@ export default function CodeMirror(props: CodeMirrorProps) {
 		});
 		yDoc.on("update", () => {
 			// Only trigger on the first update
+			let participants = provider.awareness.getStates();
+			let participantsArray = [];
+			for (let [, value] of participants) {
+				participantsArray.push(value.user.name);
+			}
+			props.setRoomParticipants(participantsArray);
+			props.setIsConnectedToRoom(true);
 			if (!initialUpdate) return;
 			ytext = yDoc.getText("codemirror");
 			initialUpdate = false;
