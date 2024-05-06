@@ -30,7 +30,6 @@ import TutorialWarningModal from "../popups-etc/tutorial-warning";
 import { isDark, editSessionLength } from "../../lib/state";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
-import { set } from "astro/zod";
 
 interface EditorProps {
 	persistenceState: Signal<PersistenceState>;

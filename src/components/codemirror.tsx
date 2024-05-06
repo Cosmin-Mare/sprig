@@ -91,7 +91,9 @@ export default function CodeMirror(props: CodeMirrorProps) {
 		const yUndoManager = new Y.UndoManager(ytext);
 
 		provider.awareness.setLocalStateField("user", {
-			name: "Anonymous" + Math.floor(Math.random() * 1000),
+			name:
+				props.persistenceState.value.session?.user.username ??
+				"Anonymous",
 		});
 		let yCollabExtension = yCollab(ytext, provider.awareness, {
 			undoManager: yUndoManager,
