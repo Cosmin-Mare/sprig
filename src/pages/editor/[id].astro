@@ -9,6 +9,7 @@ import { mobileUserAgent } from "../../lib/utils/mobile";
 import MobileUnsupported from "../../components/popups-etc/mobile-unsupported";
 import UploadWarningModal from "../../components/popups-etc/upload-failed-warning";
 import { showUploadWarningModal } from "../../lib/upload";
+import { renderAstroTemplateResult } from "astro/dist/runtime/server/render";
 
 // Redirects for legacy Sprig URLs
 const galleryRegex =
@@ -25,8 +26,16 @@ if (Astro.url.searchParams.has("id"))
 const tempGame = Astro.cookies.get("sprigTempGame").value;
 if (tempGame) return Astro.redirect(`/~/${encodeURIComponent(tempGame)}`, 302);
 
+const roomId = Astro.params.id
+
 const session = await getSession(Astro.cookies);
-if (session?.session.full) return Astro.redirect("/~", 302);
+if (session?.session.full){
+	if(roomId){
+		return Astro.redirect(`/~/${roomId}`, 302);
+	} else{
+		return Astro.redirect("/~", 302)
+	}
+}
 
 const persistenceState = signal<PersistenceState>({
 	kind: "IN_MEMORY",

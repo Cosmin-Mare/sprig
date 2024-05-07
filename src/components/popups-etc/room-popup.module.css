@@ -83,3 +83,11 @@ p.muted {
 	color: #000000;
 	text-decoration: underline;
 }
+
+.participantsList {
+	list-style: none;
+	padding: 0;
+}
+.closeBtn {
+	background-color: rgb(255, 66, 66);
+}

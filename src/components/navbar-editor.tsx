@@ -593,6 +593,9 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 					roomId={props.roomId}
 					isConnected={props.isConnectedToRoom}
 					participants={props.roomParticipants}
+					onClose={() => {
+						showRoomPopup.value = false;
+					}}
 				/>
 			)}
 		</>
