@@ -31,13 +31,12 @@ import { editSessionLength, switchTheme, ThemeType } from "../../lib/state";
 
 interface EditorProps {
 	persistenceState: Signal<PersistenceState>;
+	persistenceState: Signal<PersistenceState>;
 	cookies: {
 		outputAreaSize: number | null;
 		helpAreaSize: number | null;
 		hideHelp: boolean;
 	};
-	checkRoom: boolean;
-	id?: string;
 }
 
 interface ResizeState {
@@ -46,11 +45,13 @@ interface ResizeState {
 }
 
 // Output area is the area with the game view and help
-const minOutputAreaWidth = 360;
+const minOutputAreaWidth = 380;
 const defaultOutputAreaWidth = 400;
 const outputAreaWidthMargin = 130; // The margin between the editor and output area
 
-const minHelpAreaHeight = 200;
+const minHelpAreaHeight = 32;
+let defaultHelpAreaHeight = 350;
+const helpAreaHeightMargin = 0; // The margin between the screen and help area
 
 const foldAllTemplateLiterals = () => {
 	if (!codeMirror.value) return;
@@ -139,75 +140,12 @@ const exitTutorial = (persistenceState: Signal<PersistenceState>) => {
 			delete persistenceState.value.tutorial;
 	}
 };
+};
 
-export default function Editor({
-	persistenceState,
-	cookies,
-	id,
-	checkRoom,
-}: EditorProps) {
-	const [roomId, setRoomId] = useState<string | null>(null);
-	const [isConnectedToRoom, setIsConnectedToRoom] = useState(false);
-	const [roomParticipants, setRoomParticipants] = useState<string[]>([]);
-	useEffect(() => {
-		if (id) setRoomId(id);
-		if (checkRoom) {
-			const yDoc = new Y.Doc();
-			if (
-				persistenceState.value.kind !== "PERSISTED" ||
-				persistenceState.value.game === "LOADING"
-			) {
-				return;
-			}
-			const provider = new WebrtcProvider(
-				persistenceState.value.game.id,
-				yDoc,
-				{
-					signaling: [
-						"wss://yjs-signaling-server-5fb6d64b3314.herokuapp.com",
-					],
-				}
-			);
-			const waitProviderConnection = function () {
-				return new Promise<void>((resolve, reject) => {
-					let timer: NodeJS.Timeout;
-					const checkUpdated = () => {
-						let providerStates =
-							provider.awareness.getStates().size;
-						if (providerStates > 1) {
-							clearTimeout(timer);
-							resolve();
-						} else {
-							setTimeout(checkUpdated, 500);
-						}
-					};
-					timer = setTimeout(() => {
-						clearTimeout(timer);
-						reject();
-					}, 2500);
-
-					checkUpdated();
-				});
-			};
-			waitProviderConnection().then(
-				() => {
-					if (
-						persistenceState.value.kind === "PERSISTED" &&
-						persistenceState.value.game !== "LOADING"
-					) {
-						setRoomId(persistenceState.value.game.id);
-						provider.destroy();
-						yDoc.destroy();
-					} else {
-						window.location.href = "/404";
-					}
-				},
-				() => {
-					window.location.href = "/404";
-				}
-			);
-		}
-	}, [checkRoom]);
+export default function Editor({ persistenceState, cookies }: EditorProps) {
+	const outputArea = useRef<HTMLDivElement>(null);
+	const screenContainer = useRef<HTMLDivElement>(null);
+	const screenControls = useRef<HTMLDivElement>(null);
 
 	// Resize state storage
 	const outputAreaSize = useSignal(
@@ -217,19 +155,54 @@ export default function Editor({
 		)
 	);
 
+	// this is initially setting the helpAreaSize
+	const helpAreaSize = useSignal(
+		Math.max(
+			minHelpAreaHeight,
+			cookies.helpAreaSize ?? defaultHelpAreaHeight
+		)
+	);
+
+	const canvasScreenSize = useSignal({
+		height: outputArea.current?.clientHeight! - helpAreaSize.value - screenControls.current?.clientHeight!,
+		maxHeight: screenContainer.current?.clientHeight
+	});
+
+	// this runs when the screenContainer and the outputArea refs change
+	useEffect(() => {
+		if (!outputArea.current || !screenContainer.current) return;
+		defaultHelpAreaHeight =
+			outputArea.current.clientHeight -
+			screenContainer.current.clientHeight;
+		helpAreaSize.value =
+			outputArea.current.clientHeight -
+			screenContainer.current.clientHeight;
+	}, [outputArea.current, screenContainer.current]);
+
 	useSignalEffect(() => {
 		document.cookie = `outputAreaSize=${
 			outputAreaSize.value
 		};path=/;max-age=${60 * 60 * 24 * 365}`;
 	});
 
+	useSignalEffect(() => {
+		document.cookie = `helpAreaSize=${helpAreaSize.value};path=/;max-age=${
+			60 * 60 * 24 * 365
+		}`;
+	});
+
 	// Exit tutorial warning modal
 	const showingTutorialWarning = useSignal(false);
+	const showingTutorialWarning = useSignal(false);
 
-	// Max height
+	// Max width of the output area
 	const maxOutputAreaSize = useSignal(outputAreaSize.value);
 
+	// Max height of help area
+	const maxHelpAreaSize = useSignal(helpAreaSize.value);
+
 	useEffect(() => {
+		// re-intialize the value of the editing session length to since the editor was opened
 		// re-intialize the value of the editing session length to since the editor was opened
 		editSessionLength.value = new Date();
 
@@ -245,12 +218,14 @@ export default function Editor({
 
 		const updateMaxSize = () => {
 			maxOutputAreaSize.value =
-				(window.innerWidth - outputAreaWidthMargin) / 2.5;
+				window.innerWidth - outputAreaWidthMargin - 100;
+			maxHelpAreaSize.value = window.innerHeight - helpAreaHeightMargin;
 		};
 		window.addEventListener("resize", updateMaxSize, { passive: true });
 		updateMaxSize();
 		return () => window.removeEventListener("resize", updateMaxSize);
 	}, []);
+
 	const realOutputAreaSize = useComputed(() =>
 		Math.min(
 			maxOutputAreaSize.value,
@@ -258,17 +233,60 @@ export default function Editor({
 		)
 	);
 
+	const realHelpAreaSize = useComputed(() =>
+		Math.min(
+			maxHelpAreaSize.value,
+			Math.max(minHelpAreaHeight, helpAreaSize.value)
+		)
+	);
+
+	// compute the height and max height of the canvas screen 
+	function computeCanvasScreenHeights() {
+		// compute the new canvas screen height
+		const canvasScreenHeight = outputArea.current?.clientHeight! - realHelpAreaSize.value - screenControls.current?.clientHeight!;
+
+		// calculate canvas screen max height
+		// the max height is such that (width/height) == 1.25
+		// that is to respect the 1000 / 800 aspect ratio
+		const canvasScreenMaxHeight = outputArea.current?.clientWidth! / 1.25;
+
+		canvasScreenSize.value = {
+			height: canvasScreenHeight,
+			maxHeight: canvasScreenMaxHeight
+		};
+	}
+
 	// Resize bar logic
 	const resizeState = useSignal<ResizeState | null>(null);
+	const horizontalResizeState = useSignal<ResizeState | null>(null);
 	useEffect(() => {
 		const onMouseMove = (event: MouseEvent) => {
+			if (!resizeState.value) return;
+			event.preventDefault();
 			if (!resizeState.value) return;
 			event.preventDefault();
 			outputAreaSize.value =
 				resizeState.value.startValue +
 				resizeState.value.startMousePos -
 				event.clientX;
+			computeCanvasScreenHeights();
 		};
+		window.addEventListener("mousemove", onMouseMove);
+		return () => window.removeEventListener("mousemove", onMouseMove);
+	}, []);
+
+	// this reacts to change of the helpArea resizes and adjusts things accordingly
+	useEffect(() => {
+		const onMouseMove = (event: MouseEvent) => {
+			if (!horizontalResizeState.value) return;
+			event.preventDefault();
+			helpAreaSize.value =
+				horizontalResizeState.value.startValue +
+				horizontalResizeState.value.startMousePos -
+				event.clientY;
+
+		computeCanvasScreenHeights();
+	};
 		window.addEventListener("mousemove", onMouseMove);
 		return () => window.removeEventListener("mousemove", onMouseMove);
 	}, []);
@@ -277,33 +295,49 @@ export default function Editor({
 	const screen = useRef<HTMLCanvasElement>(null);
 	const cleanup = useRef<(() => void) | null>(null);
 	const screenShake = useSignal(0);
-	let [isInRoom, setIsInRoom] = useState(false);
 	const onRun = async () => {
+		foldAllTemplateLiterals();
+		if (!screen.current) return;
 		foldAllTemplateLiterals();
 		if (!screen.current) return;
 
 		if (cleanup.current) cleanup.current();
 		errorLog.value = [];
+		if (cleanup.current) cleanup.current();
+		errorLog.value = [];
 
 		const code = codeMirror.value?.state.doc.toString() ?? "";
+		const code = codeMirror.value?.state.doc.toString() ?? "";
 		const res = runGame(code, screen.current, (error) => {
+			errorLog.value = [...errorLog.value, error];
+		});
 			errorLog.value = [...errorLog.value, error];
 		});
 
 		screen.current.focus();
 		screenShake.value++;
 		setTimeout(() => screenShake.value--, 200);
+		screen.current.focus();
+		screenShake.value++;
+		setTimeout(() => screenShake.value--, 200);
 
+		cleanup.current = res.cleanup;
 		cleanup.current = res.cleanup;
 		if (res.error) {
 			console.error(res.error.raw);
 			errorLog.value = [...errorLog.value, res.error];
+			console.error(res.error.raw);
+			errorLog.value = [...errorLog.value, res.error];
 		}
+	};
 	};
 
 	const onStop = async () => {
 		if (!screen.current) return;
+		if (!screen.current) return;
 
+		if (cleanup.current) cleanup.current();
+	};
 		if (cleanup.current) cleanup.current();
 	};
 
@@ -376,14 +410,6 @@ export default function Editor({
 		});
 	}, [initialCode]);
 
-	let editorCssClasses = `${styles.pageMain} `;
-	/*
-	if (isDark.value) {
-		const classes = editorCssClasses.split(" ");
-		classes.push("darkMode");
-		editorCssClasses = classes.join(" ");
-	}
-	*/
 	return (
 		<div class={styles.page}>
 			<Navbar
@@ -485,21 +511,23 @@ export default function Editor({
 
 				<div
 					class={styles.outputArea}
+					ref={outputArea}
 					style={{ width: realOutputAreaSize.value }}
 				>
-					<div class={styles.screenContainer}>
+					<div ref={screenContainer}>
 						<div class={styles.canvasWrapper}>
 							<canvas
 								class={`${styles.screen} ${
 									screenShake.value > 0 ? "shake" : ""
 								}`}
+								style={ outputArea.current ? { height: canvasScreenSize.value.height, maxHeight:  canvasScreenSize.value.maxHeight }: { } }
 								ref={screen}
 								tabIndex={0}
 								width="1000"
 								height="800"
 							/>
 						</div>
-						<div class={styles.screenControls}>
+						<div ref={screenControls} class={styles.screenControls}>
 							<button
 								className={styles.mute}
 								onClick={() => (muted.value = !muted.value)}
@@ -528,30 +556,69 @@ export default function Editor({
 							</div>
 						</div>
 					</div>
-
-					<div
-						class={styles.helpContainer}
-						style={{ minHeight: minHelpAreaHeight }}
-					>
-						{!(
-							(persistenceState.value.kind === "SHARED" ||
-								persistenceState.value.kind === "PERSISTED") &&
-							persistenceState.value.tutorial
-						) && <Help initialVisible={!cookies.hideHelp} />}
-
-						{(persistenceState.value.kind === "SHARED" ||
-							persistenceState.value.kind === "PERSISTED") &&
-							persistenceState.value.tutorial && (
+					<div class={styles.helpContainer}>
+						<div
+							class={`${styles.horizontalResizeBar} ${
+								horizontalResizeState.value
+									? styles.resizing
+									: ""
+							}`}
+							onMouseDown={(event) => {
+								document.documentElement.style.cursor =
+									"col-resize";
+								horizontalResizeState.value = {
+									startMousePos: event.clientY,
+									startValue: realHelpAreaSize.value,
+								};
+								window.addEventListener(
+									"mouseup",
+									() => {
+										horizontalResizeState.value = null;
+										document.documentElement.style.cursor =
+											"";
+									},
+									{ once: true }
+								);
+							}}
+						/>
+						<div
+							class={styles.helpContainer}
+							style={{ height: realHelpAreaSize.value }}
+						>
+							{!(
+								(persistenceState.value.kind === "SHARED" ||
+									persistenceState.value.kind ===
+										"PERSISTED") &&
+								persistenceState.value.tutorial
+							) && (
 								<Help
-									tutorialContent={
-										persistenceState.value.tutorial
+									defaultHelpAreaHeight={
+										defaultHelpAreaHeight
 									}
+									helpAreaSize={helpAreaSize}
 									persistenceState={persistenceState}
-									showingTutorialWarning={
-										showingTutorialWarning
-									}
+									initialVisible={!cookies.hideHelp}
 								/>
 							)}
+
+							{(persistenceState.value.kind === "SHARED" ||
+								persistenceState.value.kind === "PERSISTED") &&
+								persistenceState.value.tutorial && (
+									<Help
+										defaultHelpAreaHeight={
+											defaultHelpAreaHeight
+										}
+										helpAreaSize={helpAreaSize}
+										tutorialContent={
+											persistenceState.value.tutorial
+										}
+										persistenceState={persistenceState}
+										showingTutorialWarning={
+											showingTutorialWarning
+										}
+									/>
+								)}
+						</div>
 					</div>
 				</div>
 			</div>

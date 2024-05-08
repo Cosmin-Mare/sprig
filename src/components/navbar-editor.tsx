@@ -25,7 +25,6 @@ import {
 	IoShareOutline,
 	IoShuffle,
 	IoWarning,
-	IoBrush,
 } from "react-icons/io5";
 import { FaBrush } from "react-icons/fa";
 import { usePopupCloseClick } from "../lib/utils/popup-close-click";
@@ -76,16 +75,29 @@ const canDelete = (persistenceState: Signal<PersistenceState>) => {
 		!persistenceState.value.game.unprotected
 	);
 };
+	return (
+		true &&
+		persistenceState.value.kind === "PERSISTED" &&
+		persistenceState.value.game !== "LOADING" &&
+		!persistenceState.value.game.unprotected
+	);
+};
 
 interface EditorNavbarProps {
 	persistenceState: Signal<PersistenceState>;
-	setIsInRoom: (isRoom: boolean) => void;
-	roomId: string | null;
-	isConnectedToRoom: boolean;
-	roomParticipants: string[];
 }
 
-type StuckCategory = "Logic Error" | "Syntax Error" | "Other" | "UI" | "Code Compilation" | "Bitmap Editor" | "Tune Editor" | "Help/Tutorial Window" | "AI Chat" | "Website";
+type StuckCategory =
+	| "Logic Error"
+	| "Syntax Error"
+	| "Other"
+	| "UI"
+	| "Code Compilation"
+	| "Bitmap Editor"
+	| "Tune Editor"
+	| "Help/Tutorial Window"
+	| "AI Chat"
+	| "Website";
 type StuckData = {
 	category: StuckCategory;
 	description: string;
@@ -319,6 +331,16 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 						<FaBrush />
 					</a>
 				</li>
+				<li class={styles.actionIcon}>
+					<a
+						onClick={() =>
+							(showThemePicker.value = !showThemePicker.value)
+						}
+						target="_blank"
+					>
+						<FaBrush />
+					</a>
+				</li>
 
 				<li>
 					<Button
@@ -328,10 +350,29 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 						}
 						disabled={!isLoggedIn}
 					>
-						I'm stuck
+						Report a bug
 					</Button>
 				</li>
 
+				<li>
+					<Button
+						accent
+						icon={
+							{
+								IDLE: IoPlay,
+								LOADING: VscLoading,
+								ERROR: IoWarning,
+							}[uploadState.value]
+						}
+						spinnyIcon={uploadState.value === "LOADING"}
+						loading={uploadState.value === "LOADING"}
+						onClick={() =>
+							upload(codeMirror.value?.state.doc.toString() ?? "")
+						}
+					>
+						Run on Device
+					</Button>
+				</li>
 				<li>
 					<Button
 						accent
@@ -388,9 +429,9 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 								<span
 									style={{
 										display: "inline-block",
-										backgroundColor: themeValue.background,
+										backgroundColor: themeValue?.background,
 										border: "solid 2px",
-										borderColor: themeValue.accent,
+										borderColor: themeValue?.accent,
 										width: "25px",
 										height: "25px",
 										borderRadius: "50%",
@@ -436,73 +477,143 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 								...stuckData.value,
 							};
 
-					try {
-						const response = await fetch("/api/bug-report", {
-							method: "POST",
-							body: JSON.stringify(payload)
-						})
-						// Let the user know we'll get back to them after we've receive their complaint
-						if (response.ok) {
-							alert("We received your bug report!  Thanks!")
-						} else alert("We couldn't send your request. Please make sure you're connected and try again.")
-
-					} catch (err) {
-						console.error(err);
-					} finally {
-						isSubmitting.value = false;
-					}
-			}}>
-					<label htmlFor="issue category">What is the type of issue you're facing?</label>
-					<select value={stuckData.value.category} onChange={(event) => {
-						stuckData.value = { ...stuckData.value, category: (event.target! as HTMLSelectElement).value as StuckCategory }
-					}} name="" id="">
-						<option value={"Other"}>Other</option>
-						<option value={"UI"}>UI</option>
-						<option value={"Code Compilation"}>Code Compilation</option>
-						<option value={"Bitmap Editor"}>Bitmap Editor</option>
-						<option value={"Tune Editor"}>Tune Editor</option>
-						<option value={"Help/Tutorial Window"}>Help/Tutorial Window</option>
-						<option value={"AI Chat"}>AI Chat</option>
-						<option value={"Website"}>Website</option>
-					</select>
-					<label htmlFor="Description">Please describe the issue you're facing below</label>
-					<Textarea required value={stuckData.value.description} onChange={event => {
-						stuckData.value = { ...stuckData.value, description: event.target.value }
-					}} placeholder='Example: After 2 seconds, the browser tab suddenly freezes and I do not know why.' />
-					<br />
-					<Button type='submit' disabled={isSubmitting.value}>
-						{isSubmitting.value ? "Sending..." : "Send"}
-					</Button>
-				</form>
-			</div>
-		)}
-		{showNavPopup.value && <div class={styles.navPopup}>
-			<ul>
-				{props.persistenceState.value.session?.session.full
-					? (<>
-						<li><a href='/~'>Your games</a></li>
-						<li><a href='/~/new'>New game</a></li>
-					</>)
-					: (<>
-						<li><a href='/~'>Your games (log in)</a></li>
+							try {
+								const response = await fetch(
+									"/api/bug-report",
+									{
+										method: "POST",
+										body: JSON.stringify(payload),
+									}
+								);
+								// Let the user know we'll get back to them after we've receive their complaint
+								if (response.ok) {
+									alert(
+										"We received your bug report!  Thanks!"
+									);
+								} else
+									alert(
+										"We couldn't send your request. Please make sure you're connected and try again."
+									);
+							} catch (err) {
+								console.error(err);
+							} finally {
+								isSubmitting.value = false;
+							}
+						}}
+					>
+						<label htmlFor="issue category">
+							What is the type of issue you're facing?
+						</label>
+						<select
+							value={stuckData.value.category}
+							onChange={(event) => {
+								stuckData.value = {
+									...stuckData.value,
+									category: (
+										event.target! as HTMLSelectElement
+									).value as StuckCategory,
+								};
+							}}
+							name=""
+							id=""
+						>
+							<option value={"Other"}>Other</option>
+							<option value={"UI"}>UI</option>
+							<option value={"Code Compilation"}>
+								Code Compilation
+							</option>
+							<option value={"Bitmap Editor"}>
+								Bitmap Editor
+							</option>
+							<option value={"Tune Editor"}>Tune Editor</option>
+							<option value={"Help/Tutorial Window"}>
+								Help/Tutorial Window
+							</option>
+							<option value={"AI Chat"}>AI Chat</option>
+							<option value={"Website"}>Website</option>
+						</select>
+						<label htmlFor="Description">
+							Please describe the issue you're facing below
+						</label>
+						<Textarea
+							required
+							value={stuckData.value.description}
+							onChange={(event) => {
+								stuckData.value = {
+									...stuckData.value,
+									description: event.target.value,
+								};
+							}}
+							placeholder="Example: After 2 seconds, the browser tab suddenly freezes and I do not know why."
+						/>
+						<br />
+						<Button type="submit" disabled={isSubmitting.value}>
+							{isSubmitting.value ? "Sending..." : "Send"}
+						</Button>
+					</form>
+				</div>
+			)}
+			{showNavPopup.value && (
+				<div class={styles.navPopup}>
+					<ul>
+						{props.persistenceState.value.session?.session.full ? (
+							<>
+								<li>
+									<a href="/~">Your games</a>
+								</li>
+								<li>
+									<a href="/~/new">New game</a>
+								</li>
+							</>
+						) : (
+							<>
+								<li>
+									<a href="/~">Your games (log in)</a>
+								</li>
+								<li>
+									<a
+										href="javascript:void"
+										role="button"
+										onClick={() => {
+											if (resetState.value === "idle") {
+												resetState.value = "confirm";
+											} else {
+												codeMirror.value?.dispatch({
+													changes: {
+														from: 0,
+														to: codeMirror.value
+															.state.doc.length,
+														insert: defaultExampleCode,
+													},
+												});
+												resetState.value = "idle";
+											}
+										}}
+									>
+										{resetState.value === "idle"
+											? "Reset game code"
+											: "Are you sure?"}
+									</a>
+								</li>
+							</>
+						)}
 						<li>
-							<a href='javascript:void' role='button' onClick={() => {
-								if (resetState.value === 'idle') {
-									resetState.value = 'confirm'
-								} else {
-									codeMirror.value?.dispatch({
-										changes: {
-											from: 0,
-											to: codeMirror.value.state.doc.length,
-											insert: defaultExampleCode
-										}
-									})
-									resetState.value = 'idle'
-								}
-							}}>
-								{resetState.value === 'idle'
-									? 'Reset game code'
-									: 'Are you sure?'}
+							<a href="/gallery">Gallery</a>
+						</li>
+						<li>
+							<a href="/get">Get a Sprig</a>
+						</li>
+						<li>
+							<a
+								href="javascript:void(0);"
+								role="button"
+								onClick={() => {
+									showNavPopup.value = false;
+									prettifyCode();
+								}}
+							>
+								{" "}
+								Prettify code{" "}
 							</a>
 						</li>
 					</ul>
@@ -602,16 +713,6 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 						)}
 					</ul>
 				</div>
-			)}
-			{showRoomPopup.value && (
-				<RoomPopup
-					roomId={props.roomId}
-					isConnected={props.isConnectedToRoom}
-					participants={props.roomParticipants}
-					onClose={() => {
-						showRoomPopup.value = false;
-					}}
-				/>
 			)}
 		</>
 	);
