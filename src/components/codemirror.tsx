@@ -18,6 +18,7 @@ import {
 	foldAllTemplateLiterals,
 	saveGame,
 } from "./big-interactive-pages/editor";
+import { Awareness } from "y-protocols/awareness";
 interface CodeMirrorProps {
 	persistenceState: Signal<PersistenceState>;
 	roomId: Signal<string>;
@@ -32,6 +33,9 @@ export default function CodeMirror(props: CodeMirrorProps) {
 	const parent = useRef<HTMLDivElement>(null);
 	const [editorRef, setEditorRef] = useState<EditorView>();
 	const yCollabSignal = useSignal<Extension | undefined>(undefined);
+	const yProviderAwarenessSignal = useSignal<Awareness | undefined>(
+		undefined
+	);
 
 	// Alert the parent to code changes (not reactive)
 	const onCodeChangeRef = useRef(props.onCodeChange);
@@ -77,6 +81,42 @@ export default function CodeMirror(props: CodeMirrorProps) {
 	};
 
 	useSignalEffect(() => {
+		if (yProviderAwarenessSignal.value === undefined) return;
+		yProviderAwarenessSignal.value.on("change", () => {
+			yProviderAwarenessSignal.value?.getStates().forEach((state) => {
+				try {
+					if (state.saved == "saved") {
+						let persistenceState = props.persistenceState.peek();
+						console.log(persistenceState);
+						if (
+							persistenceState.kind === "PERSISTED" &&
+							persistenceState.game !== "LOADING"
+						) {
+							props.persistenceState.value = {
+								...props.persistenceState.peek(),
+								cloudSaveState: "SAVED",
+							};
+						}
+					} else if (state.saved == "error") {
+						let persistenceState = props.persistenceState.peek();
+						if (
+							persistenceState.kind === "PERSISTED" &&
+							persistenceState.game !== "LOADING"
+						) {
+							props.persistenceState.value = {
+								...props.persistenceState.peek(),
+								cloudSaveState: "ERROR",
+							};
+						}
+					}
+				} catch (e) {
+					console.log(e);
+				}
+			});
+		});
+	});
+
+	useSignalEffect(() => {
 		if (!parent.current)
 			throw new Error("Oh golly! The editor parent ref is null");
 
@@ -106,6 +146,8 @@ export default function CodeMirror(props: CodeMirrorProps) {
 		//get yjs document from provider
 		let ytext = yDoc.getText("codemirror");
 		const yUndoManager = new Y.UndoManager(ytext);
+
+		yProviderAwarenessSignal.value = provider.awareness;
 
 		provider.awareness.setLocalStateField("user", {
 			name:
