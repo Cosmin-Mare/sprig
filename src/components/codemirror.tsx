@@ -237,11 +237,7 @@ export default function CodeMirror(props: CodeMirrorProps) {
 	return (
 		<div
 			class={`${styles.container} ${
-				editorRef === undefined
-					? isDark.value
-						? styles.containerSkeletonDark
-						: styles.containerSkeleton
-					: ""
+				editorRef === undefined ? styles.containerSkeleton : ""
 			} ${props.class ?? ""}`}
 			ref={parent}
 		/>
