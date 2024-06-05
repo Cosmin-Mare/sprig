@@ -57,7 +57,7 @@ export default function CodeMirror(props: CodeMirrorProps) {
 			props.persistenceState.value.game !== "LOADING"
 		)
 			props.roomId.value = props.persistenceState.value.game.id;
-	}, []);
+	});
 
 	let lastCode: string | undefined = props.initialCode ?? "";
 	// serves to restore config before dark mode was added
@@ -121,27 +121,31 @@ export default function CodeMirror(props: CodeMirrorProps) {
 	useSignalEffect(() => {
 		if (!parent.current)
 			throw new Error("Oh golly! The editor parent ref is null");
-
-		const editor = new EditorView({
-			state: createEditorState(
-				props.initialCode ? props.initialCode : "",
-				() => {
-					if (editor.state.doc.toString() === lastCode) return;
-					lastCode = editor.state.doc.toString();
-					onCodeChangeRef.current?.();
-				},
-				() => onRunShortcutRef.current?.()
-			),
-			parent: parent.current,
-		});
-
-		setEditorRef(editor);
-		props.onEditorView?.(editor);
+		if (editorRef !== undefined) {
+			editorRef.destroy();
+		}
 		if (
 			props.roomId.value === "" ||
 			props.persistenceState.peek().session === null
-		)
+		) {
+			const editor = new EditorView({
+				state: createEditorState(
+					props.initialCode ? props.initialCode : "",
+					() => {
+						if (editor.state.doc.toString() === lastCode) return;
+						lastCode = editor.state.doc.toString();
+						onCodeChangeRef.current?.();
+					},
+					() => onRunShortcutRef.current?.()
+				),
+				parent: parent.current,
+			});
+
+			setEditorRef(editor);
+			props.onEditorView?.(editor);
 			return;
+		}
+
 		if (yDoc !== undefined) {
 			yDoc.destroy();
 		}
@@ -198,16 +202,22 @@ export default function CodeMirror(props: CodeMirrorProps) {
 			}
 			if (!parent.current)
 				throw new Error("Oh golly! The editor parent ref is null");
-			editor.dispatch({
-				effects: StateEffect.appendConfig.of(
+			const editor = new EditorView({
+				state: createEditorState(
+					ytext.toString(),
+					() => {
+						if (editor.state.doc.toString() === lastCode) return;
+						lastCode = editor.state.doc.toString();
+						onCodeChangeRef.current?.();
+					},
+					() => onRunShortcutRef.current?.(),
 					yCollabSignal.peek() as Extension
 				),
-				changes: {
-					from: 0,
-					to: editor.state.doc.length,
-					insert: ytext.toString(),
-				},
+				parent: parent.current,
 			});
+
+			setEditorRef(editor);
+			props.onEditorView?.(editor);
 			foldAllTemplateLiterals();
 		});
 		yDoc.on("update", () => {
