@@ -33,6 +33,7 @@ import { VscLoading } from "react-icons/vsc";
 import { defaultExampleCode } from "../lib/examples";
 import beautifier from "js-beautify";
 import { collapseRanges } from "../lib/codemirror/util";
+import ShareRoomPopup from "./popups-etc/share-room";
 import { saveGame } from "./big-interactive-pages/editor";
 
 const saveName = throttle(500, async (gameId: string, newName: string) => {
@@ -157,6 +158,7 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 
 	const showSavePrompt = useSignal(false);
 	const showSharePopup = useSignal(false);
+	const shareRoomPopup = useSignal(false);
 
 	const deleteState = useSignal<"idle" | "confirm" | "deleting">("idle");
 	const resetState = useSignal<"idle" | "confirm">("idle");
@@ -391,6 +393,13 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 				/>
 			)}
 
+			{shareRoomPopup.value && (
+				<ShareRoomPopup
+					persistenceState={props.persistenceState}
+					onClose={() => (shareRoomPopup.value = false)}
+				/>
+			)}
+
 			{showThemePicker.value && (
 				<ul class={styles.themePicker}>
 					{Object.keys(themes).map((themeKey) => {
@@ -573,6 +582,28 @@ export default function EditorNavbar(props: EditorNavbarProps) {
 								</li>
 							</>
 						)}
+
+						{!props.persistenceState.value.session?.session.full ? (
+							<>
+								<li>
+								<a
+								href="javascript:void(0);"
+								role="button"
+						
+								onClick={() => (shareRoomPopup.value = !shareRoomPopup.value)}
+							>
+								{" "}
+								New Room{" "}
+							</a>
+								</li>
+							</>
+						) : (
+							<>
+								<li>
+									
+								</li>
+							</>
+						)}	
 						<li>
 							<a href="/gallery">Gallery</a>
 						</li>
