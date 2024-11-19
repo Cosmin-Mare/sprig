@@ -13,6 +13,7 @@ import * as Y from 'yjs'
 import { startSavingGame } from './big-interactive-pages/editor'
 import { yCollab } from 'y-codemirror.next'
 import { PersistenceStateKind } from '../lib/state'
+import metrics from '../../metrics'
 
 interface CodeMirrorProps {
 	class?: string | undefined
@@ -139,6 +140,7 @@ export default function CodeMirror(props: CodeMirrorProps) {
 				],
 				// password: ((persistenceState.kind === PersistenceStateKind.PERSISTED && persistenceState.game !== "LOADING" && persistenceState.game.password) ? persistenceState.game.password : "")
 			});
+			metrics.increment(".collab.room_started", 1)
 			//get yjs document from provider
 			let ytext = yDoc.getText("codemirror");
 			const yUndoManager = new Y.UndoManager(ytext);
